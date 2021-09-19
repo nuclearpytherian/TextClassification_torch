@@ -1,19 +1,19 @@
 import os
 
+
 class Series_Tokenizer:
 
-    def __init__(self, mode):
+    def __init__(self, mode, mecab_dic_path="C:\mecab\mecab-ko-dic"):
         self.mode = mode
         if mode == "Mecab":
-            from konlpy.tag import Mecab
-            if os.path.isdir('mecab'):
-                mecab_dic_path = "mecab\mecab-ko-dic"
+            if os.path.isdir(mecab_dic_path):
+                from konlpy.tag import Mecab
                 m = Mecab(mecab_dic_path)
                 self.tokenizer = m.morphs
             else:
-                print("No mecab dic data exists.")
+                print("Not exist 'mecab_dic_path'")
 
-        elif mode == "kobert_tokenizer":
+        elif mode == "kobert":
             """
             SAME TO:
             from pytorch_transformers import BertTokenizer
@@ -32,8 +32,3 @@ class Series_Tokenizer:
         return self.tokenizer(*args, **kwargs)
 
 
-if __name__=="__main__":
-    t = Series_Tokenizer(mode='kobert_tokenizer')
-    sentence = "심심이를 끝내러 왔다."
-    print(t(sentence))
-    print(t.encode(sentence))
