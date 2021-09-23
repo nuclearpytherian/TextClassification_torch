@@ -41,21 +41,14 @@ class Make_vocab:
         return re.sub(pattern=pattern, repl='', string=string)
 
 
+
 class DFDataset(Dataset):
 
     def __init__(self, X, y, tokenizer, vocab, padding_size, drop_not_in_vocab=True):
         super(DFDataset, self).__init__()
 
-        if type(X) == np.ndarray:
-            self.x = X
-        elif type(X) == pd.core.series.Series:
-            self.x = X.values
-
-        if type(y) == np.ndarray:
-            self.y = y
-        elif type(y) == pd.core.series.Series:
-            self.y = y.values
-
+        self.x = X.values
+        self.y = y.values
         self.tokenizer = tokenizer
         self.vocab = vocab
         self.padding_size = padding_size
@@ -67,7 +60,7 @@ class DFDataset(Dataset):
         x_tokend = [self.tokenizer(s) for s in x_data]
         x_idx =[self.padding(self.token2index(s)) for s in x_tokend]
         x_return = torch.Tensor(x_idx).int()
-        y_return = torch.Tensor(y_data).int()
+        y_return = torch.Tensor(y_data).long()
         return x_return[index], y_return[index]
 
     def __len__(self):

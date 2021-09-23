@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+from torch.nn import functional as F
 
 
 class TextClassifierLSTM(nn.Module):
@@ -19,13 +20,15 @@ class TextClassifierLSTM(nn.Module):
         if not x.dtype == torch.int:
             x = x.int()
         x = self.embedding(x)
-        x, _ = self.lstm(x, self.init_hidden())
-        x = x.squeeze()
+        x, _ = self.lstm(x, self.init_hidden(x.size(0)))
+        x = x[:,-1,:]
         x = self.fc(x)
-        return x
+        return F.log_softmax(x, dim=1)
 
-    def init_hidden(self):
-        hidden = torch.zeros(self.N_LAYER, 1, self.HIDDEN_SIZE).requires_grad_()
+    def init_hidden(self, size):
+        hidden = torch.zeros(self.N_LAYER, size, self.HIDDEN_SIZE).requires_grad_()
         return hidden.detach(), hidden.detach()
+
+
 
 
