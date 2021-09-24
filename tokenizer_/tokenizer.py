@@ -5,7 +5,7 @@ class Series_Tokenizer:
 
     def __init__(self, mode, mecab_dic_path="C:\mecab\mecab-ko-dic"):
         self.mode = mode
-        if mode == "Mecab":
+        if mode == "mecab":
             if os.path.isdir(mecab_dic_path):
                 from konlpy.tag import Mecab
                 m = Mecab(mecab_dic_path)

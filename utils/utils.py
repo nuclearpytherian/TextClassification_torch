@@ -4,8 +4,7 @@ from collections import Counter
 import torch
 from torch.utils.data import Dataset
 import random
-import numpy as np
-import pandas as pd
+
 
 class Make_vocab:
     """
@@ -17,13 +16,13 @@ class Make_vocab:
         self.vocab_len_limit = vocab_len_limit
         self.character_only = character_only
 
-    def __call__(self, copus:list):
+    def __call__(self, corpus:list):
         # To remove characters except korean, english, and number
         if self.character_only == True:
-            tokend_word = list(chain(*[self.tokenizer(self.remove_not_character(s)) for s in copus]))
+            tokend_word = list(chain(*[self.tokenizer(self.remove_not_character(s)) for s in corpus]))
 
         elif self.character_only == False:
-            tokend_word = list(chain(*[self.tokenizer(s) for s in copus]))
+            tokend_word = list(chain(*[self.tokenizer(s) for s in corpus]))
         # To remove low frequent words
         if self.vocab_len_limit is None:
             word_set = set(tokend_word)
@@ -42,26 +41,25 @@ class Make_vocab:
 
 
 
-class DFDataset(Dataset):
+class PandasTextDataset(Dataset):
 
-    def __init__(self, X, y, tokenizer, vocab, padding_size, drop_not_in_vocab=True):
-        super(DFDataset, self).__init__()
-
-        self.x = X.values
-        self.y = y.values
+    def __init__(self, text:"pandas.core.series.Series", label:"pandas.core.series.Series", tokenizer, vocab, padding_size, drop_not_in_vocab=True):
+        super(PandasTextDataset, self).__init__()
+        self.x = text
+        self.y = label
         self.tokenizer = tokenizer
         self.vocab = vocab
         self.padding_size = padding_size
         self.drop_not_in_vocab = drop_not_in_vocab
 
     def __getitem__(self, index):
-        x_data = self.x
-        y_data = self.y
-        x_tokend = [self.tokenizer(s) for s in x_data]
-        x_idx =[self.padding(self.token2index(s)) for s in x_tokend]
+        x_data = self.x[index]
+        y_data = self.y[index]
+        x_tokend = self.tokenizer(x_data)
+        x_idx = self.padding(self.token2index(x_tokend))
         x_return = torch.Tensor(x_idx).int()
-        y_return = torch.Tensor(y_data).long()
-        return x_return[index], y_return[index]
+        y_return = torch.Tensor([y_data]).long()
+        return x_return, y_return.squeeze()
 
     def __len__(self):
         return len(self.y)
@@ -89,7 +87,17 @@ class DFDataset(Dataset):
         return idxes
 
 
-def split_dataset(dataset, test_size = 0.15, val_size = 0.2, random_state=42):
+
+def pandas_split_dataDf(data_df, test_size = 0.2, val_size = 0.2, random_state=42):
+    random.seed(random_state)
+    original_idx = list(range(len(data_df)))
+    test_idx = random.sample(original_idx, int(len(original_idx) * test_size))
+    train_idx = [i for i in original_idx if i not in test_idx]
+    val_idx = random.sample(train_idx, int(len(train_idx) * val_size))
+    train_idx = [i for i in train_idx if i not in val_idx]
+    return data_df.iloc[train_idx].reset_index(drop=True), data_df.iloc[val_idx].reset_index(drop=True), data_df.iloc[test_idx].reset_index(drop=True)
+
+def split_dataset(dataset, test_size = 0.2, val_size = 0.2, random_state=42):
     random.seed(random_state)
     original_idx = list(range(len(dataset)))
     test_idx = random.sample(original_idx, int(len(original_idx) * test_size))
@@ -98,3 +106,8 @@ def split_dataset(dataset, test_size = 0.15, val_size = 0.2, random_state=42):
     train_idx = [i for i in train_idx if i not in val_idx]
     return dataset[train_idx], dataset[val_idx], dataset[test_idx]
 
+
+def remove_not_character(string):
+    # To remove characters except korean, english, and number
+    pattern = '[^ ㄱ-ㅣ가-힣|0-9|a-zA-Z]+'
+    return re.sub(pattern=pattern, repl='', string=string)

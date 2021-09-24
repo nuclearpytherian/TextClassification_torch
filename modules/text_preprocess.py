@@ -1,7 +1,7 @@
 import pandas as pd
 from torch.utils.data import DataLoader
 from tokenizer_.tokenizer import Series_Tokenizer
-from utils.utils import Make_vocab, DFDataset
+from utils.utils import Make_vocab, PandasTextDataset
 from sklearn.model_selection import train_test_split
 
 class TextPreporcesser:
@@ -34,15 +34,15 @@ class TextPreporcesser:
             # Set up Dataset
             x_train, x_test, y_train, y_test = train_test_split(self.data_df[self.text_col], self.data_df[self.label_col], test_size=0.2, random_state=42)
             x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.2, random_state=42)
-            train_set = DFDataset(X=x_train, y=y_train, tokenizer=self.tokenizer, vocab=self.vocab, padding_size=self.padding_size)
-            val_set = DFDataset(X=x_val, y=y_val, tokenizer=self.tokenizer, vocab=self.vocab, padding_size=self.padding_size)
-            test_set = DFDataset(X=x_test, y=y_test, tokenizer=self.tokenizer, vocab=self.vocab, padding_size=self.padding_size)
+            train_set = PandasTextDataset(X=x_train, y=y_train, tokenizer=self.tokenizer, vocab=self.vocab, padding_size=self.padding_size)
+            val_set = PandasTextDataset(X=x_val, y=y_val, tokenizer=self.tokenizer, vocab=self.vocab, padding_size=self.padding_size)
+            test_set = PandasTextDataset(X=x_test, y=y_test, tokenizer=self.tokenizer, vocab=self.vocab, padding_size=self.padding_size)
             # Set dataloader
             self.train_loader = DataLoader(train_set, batch_size=self.batch_size, shuffle=self.shuffle)
             self.val_loader = DataLoader(val_set, batch_size=self.batch_size, shuffle=self.shuffle)
             self.test_loader = DataLoader(test_set, batch_size=self.batch_size, shuffle=self.shuffle)
         else:
-            dataset = DFDataset(X=self.data_df[self.text_col], y=self.data_df[self.label_col], tokenizer=self.tokenizer, vocab=self.vocab, padding_size=self.padding_size)
+            dataset = PandasTextDataset(X=self.data_df[self.text_col], y=self.data_df[self.label_col], tokenizer=self.tokenizer, vocab=self.vocab, padding_size=self.padding_size)
             self.dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=self.shuffle)
 
 
