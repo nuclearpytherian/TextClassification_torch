@@ -40,7 +40,6 @@ class Make_vocab:
         return re.sub(pattern=pattern, repl='', string=string)
 
 
-
 class PandasTextDataset(Dataset):
 
     def __init__(self, text:"pandas.core.series.Series", label:"pandas.core.series.Series", tokenizer, vocab, padding_size, drop_not_in_vocab=True):
@@ -87,6 +86,48 @@ class PandasTextDataset(Dataset):
         return idxes
 
 
+class SimplePredictor:
+    def __init__(self, model_origin, artifact_saved_path, tokenizer, vocab, padding_size, drop_not_in_vocab=True):
+        self.model_origin = model_origin
+        self.artifact_saved_path = artifact_saved_path
+        self.tokenizer = tokenizer
+        self.vocab = vocab
+        self.padding_size = padding_size
+        self.drop_not_in_vocab = drop_not_in_vocab
+
+    def __call__(self, sentence):
+        data = self.return_input(sentence)
+        model = self.load_model()
+        return model(data)
+
+    def return_input(self, sentence):
+        data = self.padding(self.token2index(self.tokenizer(sentence)))
+        return torch.Tensor(data).int().view(1,-1)
+
+    def load_model(self):
+        model = self.model_origin
+        model.load_state_dict(torch.load(self.artifact_saved_path))
+        return model.eval()
+
+    def token2index(self, tokend):
+        idxes = []
+        for t in tokend:
+            try:
+                idxes.append(self.vocab[t])
+            except KeyError:
+                idxes.append(self.vocab['<unk>'])
+        if self.drop_not_in_vocab:
+            idxes = [t for t in idxes if t != 0]
+        return idxes
+
+    def padding(self, idxes):
+        if len(idxes) > self.padding_size:
+            idxes = idxes[:self.padding_size]
+
+        elif len(idxes) < self.padding_size:
+            idxes = idxes + [0 for x in range(self.padding_size - len(idxes))]
+        return idxes
+
 
 def pandas_split_dataDf(data_df, test_size = 0.2, val_size = 0.2, random_state=42):
     random.seed(random_state)
@@ -96,6 +137,7 @@ def pandas_split_dataDf(data_df, test_size = 0.2, val_size = 0.2, random_state=4
     val_idx = random.sample(train_idx, int(len(train_idx) * val_size))
     train_idx = [i for i in train_idx if i not in val_idx]
     return data_df.iloc[train_idx].reset_index(drop=True), data_df.iloc[val_idx].reset_index(drop=True), data_df.iloc[test_idx].reset_index(drop=True)
+
 
 def split_dataset(dataset, test_size = 0.2, val_size = 0.2, random_state=42):
     random.seed(random_state)

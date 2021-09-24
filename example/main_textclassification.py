@@ -86,3 +86,5 @@ if __name__ == "__main__":
 
     # Plot loss graph
     Training.plot_loss_graph()
+
+
