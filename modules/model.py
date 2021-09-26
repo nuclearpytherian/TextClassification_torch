@@ -28,7 +28,7 @@ class TextLSTMClassifier(nn.Module):
         x, _ = self.lstm(x, self.init_hidden(x.size(0)))
         x = x[:,-1,:]
         x = self.fc(x)
-        return F.log_softmax(x, dim=1)
+        return F.softmax(x, dim=1)
 
     def init_hidden(self, size):
         if self.bidirectional:

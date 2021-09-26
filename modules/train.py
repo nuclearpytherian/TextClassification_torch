@@ -4,6 +4,7 @@ import torch
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+import copy
 
 class TextTrainer:
 
@@ -47,7 +48,7 @@ class TextTrainer:
                 val_loss += loss.item()*len(x) / len(self.val_dataloader)
             val_losses.append(val_loss)
 
-            model_history.append(self.model.state_dict())
+            model_history.append(copy.deepcopy(self.model.state_dict()))
 
             print("Epoch {0}/{1}. Train loss {2:.4}. Val loss {3:.4}".format(i + 1, self.EPOCH, train_loss, val_loss))
 
@@ -73,7 +74,7 @@ class TextTrainer:
             best_model_idx = np.argmin(np.array(self.val_losses))
             torch.save(self.model_history[best_model_idx], os.path.join('artifact', f"best_epoch_model.pt"))
         else:
-            torch.save(self.model.state_dict(), os.path.join('artifact', "last_epoch_model.pt"))
+            torch.save(self.model_history[len(self.val_losses)-1], os.path.join('artifact', "last_epoch_model.pt"))
 
     def plot_loss_graph(self):
         fig, axes = plt.subplots(2,1, figsize=(10,6))
@@ -88,4 +89,5 @@ class TextTrainer:
         axes[1].grid()
         fig.tight_layout()
         plt.show()
+
 

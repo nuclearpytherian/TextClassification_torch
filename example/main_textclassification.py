@@ -1,7 +1,8 @@
 
+import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader
-from utils.utils import Make_vocab, PandasTextDataset, pandas_split_dataDf
+from utils.utils import Make_vocab, PandasTextDataset, pandas_split_dataDf, Predictor
 from tokenizer_.tokenizer import Series_Tokenizer
 from modules.model import TextLSTMClassifier
 from modules.train import TextTrainer
@@ -23,7 +24,7 @@ if __name__ == "__main__":
     vocab = vocab_generator(corpus)
 
     # dataset
-    padding_size=30
+    padding_size = 30
     train_dataset = PandasTextDataset(text=train_df['comment'],
                                       label=train_df['label'],
                                       tokenizer=tokenizer,
@@ -54,20 +55,23 @@ if __name__ == "__main__":
                                   batch_size=32,
                                   shuffle=True)
 
-    test_dataloader = DataLoader(test_dataset,
-                                  batch_size=32,
-                                  shuffle=True)
-
     # model
-    model = TextLSTMClassifier(VOCAB_SIZE=len(vocab),
-                               EMB_SIZE=64,
-                               HIDDEN_SIZE=64,
-                               OUTPUT_SIZE=2,
-                               N_LAYER=1,
-                               DROPOUT=0.0,
-                               bidirectional = False)
+    VOCAB_SIZE = len(vocab)
+    EMB_SIZE = 128
+    HIDDEN_SIZE = 64
+    OUTPUT_SIZE = 2
+    N_LAYER = 2
+    DROPOUT = 0.8
+    bidirectional = True
+    model = TextLSTMClassifier(VOCAB_SIZE=VOCAB_SIZE,
+                               EMB_SIZE=EMB_SIZE,
+                               HIDDEN_SIZE=HIDDEN_SIZE,
+                               OUTPUT_SIZE=OUTPUT_SIZE,
+                               N_LAYER=N_LAYER,
+                               DROPOUT= DROPOUT,
+                               bidirectional = bidirectional)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=0.0002, eps=1e-8)
     early_stopping = EarlyStopping(patience=10, verbose=False)
 
     # Train
@@ -78,13 +82,36 @@ if __name__ == "__main__":
                            optimizer,
                            scheduler=None,
                            early_stoper=early_stopping,
-                           EPOCH=20)
+                           EPOCH=50)
     Training.train()
-
-    # Save model
-    Training.save_model(best_model=True)
 
     # Plot loss graph
     Training.plot_loss_graph()
 
+    # Save model
+    best_model = False
+    Training.save_model(best_model=best_model)
+
+    # Eval
+    load_model = TextLSTMClassifier(VOCAB_SIZE=VOCAB_SIZE,
+                               EMB_SIZE=EMB_SIZE,
+                               HIDDEN_SIZE=HIDDEN_SIZE,
+                               OUTPUT_SIZE=OUTPUT_SIZE,
+                               N_LAYER=N_LAYER,
+                               DROPOUT=DROPOUT,
+                               bidirectional = bidirectional)
+    load_model.load_state_dict(torch.load('artifact/best_epoch_model.pt' if best_model == True else 'artifact/last_epoch_model.pt'))
+    load_model.eval()
+
+    predictor = Predictor(load_model, train_dataset)
+    acc = predictor.confusion_matrix()
+    print(acc)
+
+    predictor = Predictor(load_model, val_dataset)
+    acc = predictor.confusion_matrix()
+    print(acc)
+
+    predictor = Predictor(load_model, test_dataset)
+    acc = predictor.confusion_matrix()
+    print(acc)
 

@@ -4,7 +4,9 @@ from collections import Counter
 import torch
 from torch.utils.data import Dataset
 import random
-
+import numpy as np
+from sklearn.metrics import confusion_matrix
+import pandas as pd
 
 class Make_vocab:
     """
@@ -42,7 +44,7 @@ class Make_vocab:
 
 class PandasTextDataset(Dataset):
 
-    def __init__(self, text:"pandas.core.series.Series", label:"pandas.core.series.Series", tokenizer, vocab, padding_size, drop_not_in_vocab=True):
+    def __init__(self, text:"pandas.core.series.Series", label:"pandas.core.series.Series", tokenizer, vocab, padding_size, drop_not_in_vocab=True, mode='torch'):
         super(PandasTextDataset, self).__init__()
         self.x = text
         self.y = label
@@ -50,18 +52,23 @@ class PandasTextDataset(Dataset):
         self.vocab = vocab
         self.padding_size = padding_size
         self.drop_not_in_vocab = drop_not_in_vocab
+        self.mode = mode
 
     def __getitem__(self, index):
         x_data = self.x[index]
         y_data = self.y[index]
         x_tokend = self.tokenizer(x_data)
         x_idx = self.padding(self.token2index(x_tokend))
-        x_return = torch.Tensor(x_idx).int()
-        y_return = torch.Tensor([y_data]).long()
-        return x_return, y_return.squeeze()
+        if self.mode == 'torch':
+            x_return = torch.Tensor(x_idx).int()
+            y_return = torch.Tensor([y_data]).long().squeeze()
+        else:
+            x_return = np.array(x_idx)
+            y_return = np.array([y_data])
+        return x_return, y_return
 
     def __len__(self):
-        return len(self.y)
+        return len(self.x)
 
     def token2index(self, tokend):
         idxes = []
@@ -153,3 +160,46 @@ def remove_not_character(string):
     # To remove characters except korean, english, and number
     pattern = '[^ ㄱ-ㅣ가-힣|0-9|a-zA-Z]+'
     return re.sub(pattern=pattern, repl='', string=string)
+
+
+
+class Predictor:
+    def __init__(self, trained_model, dataloader):
+        self.model = trained_model
+        self.dataloader = dataloader
+
+    def __call__(self, dataloader):
+        preds = []
+        for i, (x, y) in enumerate(dataloader):
+            pred = self.model_predict(self.model, x)
+            preds.append(int(pred))
+            if i == len(dataloader)-1:
+                break
+        return preds
+
+    def model_predict(self, model, input):
+        if input.ndim == 1:
+            input = input.unsqueeze(0)
+        pred = model(input).data.max(1, keepdim=True)[1].squeeze()
+        return pred
+
+    def get_preds(self):
+        preds = []
+        labels = []
+        for i, (x, y) in enumerate(self.dataloader):
+            pred = self.model_predict(self.model, x)
+            preds.append(int(pred))
+            labels.append(int(y))
+            if i == len(self.dataloader) - 1:
+                break
+        return preds, labels
+
+    def get_accuracy(self):
+        preds, labels = self.get_preds()
+        return np.sum([1 for x, y in zip(preds, labels) if int(x) == int(y)]) / len(preds)
+
+    def confusion_matrix(self):
+        preds, labels = self.get_preds()
+        df = pd.DataFrame(confusion_matrix(preds, labels))
+        return df
+
