@@ -72,7 +72,7 @@ class TextTrainer:
             os.mkdir('artifact')
         if best_model:
             best_model_idx = np.argmin(np.array(self.val_losses))
-            torch.save(self.model_history[best_model_idx], os.path.join('artifact', f"best_epoch_model.pt"))
+            torch.save(self.model_history[best_model_idx], os.path.join('artifact', "best_epoch_model.pt"))
         else:
             torch.save(self.model_history[len(self.val_losses)-1], os.path.join('artifact', "last_epoch_model.pt"))
 

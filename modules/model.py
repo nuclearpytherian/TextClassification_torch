@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
+from transformers import BertModel
 
 
 class TextLSTMClassifier(nn.Module):
@@ -38,5 +39,36 @@ class TextLSTMClassifier(nn.Module):
         return h0.detach(), h0.detach()
 
 
+class TextClassificationModel(nn.Module):
 
+    def __init__(self, vocab_size, embed_dim, num_class):
+        super(TextClassificationModel, self).__init__()
+        self.embedding = nn.EmbeddingBag(vocab_size, embed_dim)
+        self.fc = nn.Linear(embed_dim, num_class)
+        self.init_weights()
+
+    def init_weights(self):
+        initrange = 0.5
+        self.embedding.weight.data.uniform_(-initrange, initrange)
+        self.fc.weight.data.uniform_(-initrange, initrange)
+        self.fc.bias.data.zero_()
+
+    def forward(self, text):
+        embedded = self.embedding(text)
+        return self.fc(embedded)
+
+
+class BERTTextClassifier(nn.Module):
+
+    def __init__(self, NUM_CLASSES):
+        super().__init__()
+        self.BERT_MODEL_NAME = 'bert-base-cased'
+        self.bert = BertModel.from_pretrained(self.BERT_MODEL_NAME)
+        self.NUM_CLASSES = NUM_CLASSES
+        self.fc = nn.Linear(self.bert.config.hidden_size, self.NUM_CLASSES)
+
+    def forward(self, x):
+        x = self.bert(x)
+        output = self.fc(x.pooler_output)
+        return output
 
